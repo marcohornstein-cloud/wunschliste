@@ -201,7 +201,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,summary:focus-visi
 canvas.confetti{position:fixed; left:0; top:0; width:100vw; height:100vh; pointer-events:none; z-index:70}
 
 /* Willkommen-Tour */
-.wiz{margin-top:4px; padding:22px 24px 20px; overflow:hidden; border-color:color-mix(in srgb, var(--info) 40%, var(--line)); background:color-mix(in srgb, var(--info) 5%, var(--surface))}
+.wiz{margin-top:18px; padding:22px 24px 20px; overflow:hidden; border-color:color-mix(in srgb, var(--info) 40%, var(--line)); background:color-mix(in srgb, var(--info) 5%, var(--surface))}
 .wiz-top{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px}
 .dots{display:flex; gap:6px; align-items:center}
 .dots i{display:block; width:8px; height:8px; border-radius:99px; background:var(--line-strong); transition:width .35s, background .35s}
@@ -415,9 +415,9 @@ footer{margin-top:34px; font-size:12.5px; color:var(--muted)}
 <div class="top"><div class="top-in">
   <div class="brand">Wunschliste</div>
   <div class="seg" role="tablist" aria-label="Bereiche">
-    <button role="tab" id="tab-save" aria-selected="true">Sparkonto</button>
+    <button role="tab" id="tab-income" aria-selected="true">Einkommen</button>
     <button role="tab" id="tab-wishes" aria-selected="false">Wünsche</button>
-    <button role="tab" id="tab-income" aria-selected="false">Einkommen</button>
+    <button role="tab" id="tab-save" aria-selected="false">Sparkonto</button>
   </div>
   <div class="acts">
     <button class="btn small" id="undo" type="button" disabled>Rückgängig</button>
@@ -430,6 +430,8 @@ footer{margin-top:34px; font-size:12.5px; color:var(--muted)}
 <div class="wrap">
 
 <div class="banner" id="banner" hidden><b>Hier wird nichts gespeichert.</b>Diese Ansicht erlaubt kein Speichern im Browser (zum Beispiel eine Vorschau oder ein privates Fenster). Was du einträgst, ist weg, sobald du die Seite schließt. Mit „Sicherung speichern“ sicherst du alles als Datei. Dauerhaft bleibt es erhalten, wenn du die Seite in einem normalen Browserfenster öffnest.</div>
+
+<div class="card wiz" id="intro" hidden></div>
 
 <!-- ================= WÜNSCHE ================= -->
 <section id="v-wishes" role="tabpanel" aria-labelledby="tab-wishes" hidden>
@@ -521,7 +523,7 @@ footer{margin-top:34px; font-size:12.5px; color:var(--muted)}
 </section>
 
 <!-- ================= EINKOMMEN ================= -->
-<section id="v-income" role="tabpanel" aria-labelledby="tab-income" hidden>
+<section id="v-income" role="tabpanel" aria-labelledby="tab-income">
   <h1>Dein Einkommen.<br><span class="grad">Der Rest rechnet sich.</span></h1>
   <p class="lead">Trag dein festes Einkommen ein. Später kannst du Nebenverdienste hinzufügen. Aus jedem Euro wird automatisch berechnet, wie viel aufs Sparkonto, aufs Spaßkonto und auf dem Hauptkonto bleibt.</p>
 
@@ -540,6 +542,12 @@ footer{margin-top:34px; font-size:12.5px; color:var(--muted)}
   </div>
 
   <div id="income-main">
+    <div class="card" id="next-card" hidden>
+      <h2>Und jetzt?</h2>
+      <p class="sub">Dein Einkommen steht und lässt sich hier jederzeit ändern. Als Nächstes kannst du Wünsche aufschreiben oder ansehen, was aus deinem Geld wird.</p>
+      <div style="display:flex; gap:10px; flex-wrap:wrap"><button class="btn primary" type="button" data-goto="wishes">Wünsche aufschreiben</button><button class="btn" type="button" data-goto="save">Sparkonto ansehen</button></div>
+    </div>
+
     <div class="card" id="now-card">
       <h2>So verteilt sich dein Geld jeden Monat</h2>
       <p class="sub" id="now-sub"></p>
@@ -576,11 +584,9 @@ footer{margin-top:34px; font-size:12.5px; color:var(--muted)}
 </section>
 
 <!-- ================= SPARKONTO ================= -->
-<section id="v-save" role="tabpanel" aria-labelledby="tab-save">
+<section id="v-save" role="tabpanel" aria-labelledby="tab-save" hidden>
   <h1>Dein Sparkonto.<br><span class="grad">Heute und später.</span></h1>
   <p class="lead" id="save-lead">Hier siehst du, was auf deinem Sparkonto liegt und was daraus in 1, 5 oder 30 Jahren wird, wenn du es so durchziehst.</p>
-
-  <div class="card wiz" id="intro" hidden></div>
 
   <div class="card" id="wealth" hidden>
     <div class="listhead" style="margin-bottom:0">
@@ -1136,15 +1142,25 @@ function projectModel(months,startBal,extra,pm){
 }
 
 /* ---------- Darstellung ---------- */
-var TAB="save", editing=null, P=null;
+var TAB="income", editing=null, P=null;
+function applyTabs(){
+  var intro=introVisible();
+  ["save","wishes","income"].forEach(function(k){ $("#v-"+k).hidden=intro||k!==TAB; $("#tab-"+k).setAttribute("aria-selected",(!intro&&k===TAB)?"true":"false"); });
+  $("#intro").hidden=!intro;
+}
+function renderTour(){
+  var intro=introVisible();
+  if(intro){ if(!W.shown){ if(!W.pending) wizInit(false); W.pending=false; W.shown=true; renderWizard(); } }
+  else if(W.shown){ W.shown=false; wizClear(); }
+}
 function showTab(t){
   if(t==="past") t="save";
   if(["save","wishes","income"].indexOf(t)<0) t="save";
-  TAB=t;
-  ["save","wishes","income"].forEach(function(k){ $("#v-"+k).hidden=k!==t; $("#tab-"+k).setAttribute("aria-selected",k===t?"true":"false"); });
+  TAB=t; applyTabs();
   render(); window.scrollTo(0,0);
 }
 function render(){
+  renderTour(); applyTabs();
   var open=state.wishes.filter(function(w){return !isReady(w)}), ready=state.wishes.filter(isReady);
   var saved=state.wishes.reduce(function(a,w){return a+w.saved},0)+state.pool;
   $("#undo").disabled=!undoStack.length;
@@ -1345,6 +1361,7 @@ function renderIncome(){
   var first=!state.incomes.length&&!state.oneoffs.length;
   $("#first-income").hidden=!first;
   $("#income-main").hidden=first;
+  $("#next-card").hidden=!(hasIncome()&&!state.wishes.length&&!state.done.length);
   if(first) return;
   var ym=ymNow(), mm=monthModel(ym), t=mm.total;
   $("#now-sub").textContent="Für "+ymLabel(ym)+": "+eur(t.income)+" Einkommen"+(mm.rows.length>1?" aus "+mm.rows.length+" Quellen":"")+".";
@@ -1412,8 +1429,6 @@ function syncProjInputs(){
 }
 function renderSave(){
   var intro=introVisible(), pj=state.proj, basis=hasIncome()||pj.start>0||pj.extra>0;
-  $("#intro").hidden=!intro;
-  if(intro){ if(!W.shown){ if(!W.pending) wizInit(false); W.pending=false; W.shown=true; renderWizard(); } } else if(W.shown){ W.shown=false; wizClear(); }
   renderWealth(intro);
   $("#proj-ctl").hidden=intro; $("#save-empty").hidden=intro||basis; $("#save-res").hidden=intro||!basis; $("#past-sec").hidden=intro||!hasIncome();
   syncProjInputs();
@@ -1604,7 +1619,7 @@ function wizInit(edit){
   var ti=tourIncome(); W.inc=ti?fmtInput(ti.amount):"";
   W.wr={alltag:fmtInput(sumRole("alltag")),spar:fmtInput(sumRole("spar")),spass:fmtInput(sumRole("spass"))};
 }
-function wizOpen(edit){ wizInit(edit); W.shown=false; W.pending=true; introForce=true; showTab("save"); }
+function wizOpen(edit){ wizInit(edit); W.shown=false; W.pending=true; introForce=true; render(); window.scrollTo(0,0); }
 function wizFinish(){ wizClear(); dismissIntro(); introForce=false; W.shown=false; render(); }
 function wizSkip(){ if(W.edit){ wizClear(); introForce=false; W.shown=false; render(); } else wizFinish(); }
 function wizStore(){
@@ -1804,7 +1819,7 @@ $("#intro").addEventListener("click",function(e){
   else if(a==="go-income"){ if(W.edit){ wizStore(); } wizFinish(); showTab("income"); }
   else if(a==="go-wish"){ wizFinish(); showTab("wishes"); }
   else if(a==="demo"){ wizFinish(); loadIncomeDemo(true); render(); toast("Beispiel geladen. Lösch die Einträge oder nutze „Rückgängig“."); }
-  else if(a==="later") wizFinish();
+  else if(a==="later"){ var hi=hasIncome(); wizFinish(); showTab(hi?"save":"income"); }
 });
 $("#intro").addEventListener("input",function(e){ if(/^wz-[hsf]$/.test(e.target.id)) wzSum(); });
 $("#intro").addEventListener("keydown",function(e){ if(e.key==="Enter"&&e.target.tagName==="INPUT"){ e.preventDefault(); if(W.steps[W.step]!=="go") wizNext(); } });
@@ -1919,7 +1934,7 @@ function loadIncomeDemo(past){
 }
 
 /* ---------- Bedienung ---------- */
-["save","wishes","income"].forEach(function(k){ $("#tab-"+k).addEventListener("click",function(){showTab(k)}); });
+["save","wishes","income"].forEach(function(k){ $("#tab-"+k).addEventListener("click",function(){ if(introVisible()) wizSkip(); showTab(k); }); });
 document.addEventListener("click",function(e){ var g=e.target.closest("[data-goto]"); if(g){ showTab(g.getAttribute("data-goto")); } });
 
 $("#add-form").addEventListener("submit",function(e){
